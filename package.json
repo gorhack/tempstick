@@ -1,17 +1,17 @@
 {
   "private": true,
-  "displayName": "Plugin Name",
-  "name": "homebridge-plugin-name",
+  "displayName": "TempStick",
+  "name": "homebridge-tempstick",
   "version": "1.0.0",
-  "description": "A short description about what your plugin does.",
+  "description": "Unofficial Ideal Sciences TempStick homebridge plugin.",
   "license": "Apache-2.0",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/USERNAME/GITHUB_PROJECT_NAME.git"
+    "url": "git+https://github.com/gorhack/tempstick.git"
   },
   "bugs": {
-    "url": "https://github.com/USERNAME/GITHUB_PROJECT_NAME/issues"
+    "url": "https://github.com/gorhack/tempstick/issues"
   },
   "engines": {
     "node": "^18.17.0 || ^20.9.0",

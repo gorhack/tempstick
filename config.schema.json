@@ -1,5 +1,5 @@
 {
-  "pluginAlias": "ExampleHomebridgePlugin",
+  "pluginAlias": "TempStickPlugin",
   "pluginType": "platform",
   "singular": true,
   "schema": {
@@ -9,7 +9,14 @@
         "title": "Name",
         "type": "string",
         "required": true,
-        "default": "Example Dynamic Platform"
+        "default": "Temp Stick Plugin"
+      },
+      "apiKey": {
+        "title": "API Key",
+        "type": "string",
+        "required": true,
+        "pattern": "^[A-Za-z0-9]*$",
+        "description": "Found at https://mytempstick.com/account#developers"
       }
     }
   }

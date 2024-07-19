@@ -1,19 +1,22 @@
 import { API, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig, Service, Characteristic } from 'homebridge';
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
-import { ExamplePlatformAccessory } from './platformAccessory.js';
+import { TempStickAccessory } from './platformAccessory.js';
 
 /**
  * HomebridgePlatform
  * This class is the main constructor for your plugin, this is where you should
  * parse the user config and discover/register accessories with Homebridge.
  */
-export class ExampleHomebridgePlatform implements DynamicPlatformPlugin {
+export class TempStickHomebridgePlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service;
   public readonly Characteristic: typeof Characteristic;
 
   // this is used to track restored cached accessories
   public readonly accessories: PlatformAccessory[] = [];
+
+  // public api (latest)
+  public readonly tempstickApiUrl: string = 'https://tempstickapi.com/api/v1/';
 
   constructor(
     public readonly log: Logging,
@@ -47,7 +50,7 @@ export class ExampleHomebridgePlatform implements DynamicPlatformPlugin {
    * It should be used to set up event handlers for characteristics and update respective values.
    */
   configureAccessory(accessory: PlatformAccessory) {
-    this.log.info('Loading accessory from cache:', accessory.displayName);
+    this.log.debug('Loading accessory from cache:', accessory.displayName);
 
     // add the restored accessory to the accessories cache, so we can track if it has already been registered
     this.accessories.push(accessory);
@@ -59,67 +62,108 @@ export class ExampleHomebridgePlatform implements DynamicPlatformPlugin {
    * must not be registered again to prevent "duplicate UUID" errors.
    */
   discoverDevices() {
+    this.log.debug('discovering devices with apikey ' + this.config.apiKey);
+    (async () => {
+      try {
+        const headers = new Headers();
+        headers.append('X-API-KEY', this.config.apiKey);
+        headers.append('Content-Type', 'text/plain');
+        const res = await fetch(this.tempstickApiUrl + 'sensors/all', {
+          headers: headers,
+        });
+        const sensors: [Sensor] = (await res.json()).data.items;
+        // TODO undocumented `tcTemp` in readings for probe temp
+        // TODO add humidity sensors
 
-    // EXAMPLE ONLY
-    // A real plugin you would discover accessories from the local network, cloud services
-    // or a user-defined array in the platform config.
-    const exampleDevices = [
-      {
-        exampleUniqueId: 'ABCD',
-        exampleDisplayName: 'Bedroom',
-      },
-      {
-        exampleUniqueId: 'EFGH',
-        exampleDisplayName: 'Kitchen',
-      },
-    ];
+        // loop over the discovered devices and register each one if it has not already been registered
+        sensors.forEach(sensor => {
+          // generate a unique id for the accessory this should be generated from
+          // something globally unique, but constant, for example, the device serial
+          // number or MAC address
+          const uuid = this.api.hap.uuid.generate(sensor.sensor_mac_addr);
 
-    // loop over the discovered devices and register each one if it has not already been registered
-    for (const device of exampleDevices) {
+          // see if an accessory with the same uuid has already been registered and restored from
+          // the cached devices we stored in the `configureAccessory` method above
+          const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
+          if (existingAccessory) {
+            // the accessory already exists
+            this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName);
 
-      // generate a unique id for the accessory this should be generated from
-      // something globally unique, but constant, for example, the device serial
-      // number or MAC address
-      const uuid = this.api.hap.uuid.generate(device.exampleUniqueId);
+            // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. e.g.:
+            existingAccessory.context.device = sensor;
+            this.log.info(`Updating accessory ${sensor.sensor_name}. ` +
+                `It is ${sensor.offline ? 'offline' : 'online'} with and the last reading was ${sensor.last_temp}°C ` +
+                `with a battery level at ${sensor.battery_pct}%`);
+            this.api.updatePlatformAccessories([existingAccessory]);
 
-      // see if an accessory with the same uuid has already been registered and restored from
-      // the cached devices we stored in the `configureAccessory` method above
-      const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
+            // create the accessory handler for the restored accessory
+            // this is imported from `platformAccessory.ts`
+            new TempStickAccessory(this, existingAccessory);
 
-      if (existingAccessory) {
-        // the accessory already exists
-        this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName);
+            // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, e.g.:
+            // remove platform accessories when no longer present
+            // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
+            // this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
+          } else {
+            // the accessory does not yet exist, so we need to create it
+            this.log.info(`Adding new accessory ${sensor.sensor_name}. ` +
+                `It is ${sensor.offline ? 'offline' : 'online'} with and the last reading was ${sensor.last_temp}°C ` +
+                `with a battery level at ${sensor.battery_pct}%`);
 
-        // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. e.g.:
-        // existingAccessory.context.device = device;
-        // this.api.updatePlatformAccessories([existingAccessory]);
+            // create a new accessory
+            const accessory = new this.api.platformAccessory(sensor.sensor_name, uuid);
 
-        // create the accessory handler for the restored accessory
-        // this is imported from `platformAccessory.ts`
-        new ExamplePlatformAccessory(this, existingAccessory);
+            // store a copy of the device object in the `accessory.context`
+            // the `context` property can be used to store any data about the accessory you may need
+            accessory.context.device = sensor;
 
-        // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, e.g.:
-        // remove platform accessories when no longer present
-        // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
-        // this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
-      } else {
-        // the accessory does not yet exist, so we need to create it
-        this.log.info('Adding new accessory:', device.exampleDisplayName);
+            // create the accessory handler for the newly create accessory
+            // this is imported from `platformAccessory.ts`
+            new TempStickAccessory(this, accessory);
 
-        // create a new accessory
-        const accessory = new this.api.platformAccessory(device.exampleDisplayName, uuid);
+            // link the accessory to your platform
+            this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+          }
+        });
 
-        // store a copy of the device object in the `accessory.context`
-        // the `context` property can be used to store any data about the accessory you may need
-        accessory.context.device = device;
-
-        // create the accessory handler for the newly create accessory
-        // this is imported from `platformAccessory.ts`
-        new ExamplePlatformAccessory(this, accessory);
-
-        // link the accessory to your platform
-        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      } catch (err) {
+        // TODO: Catch 406 and other errors and handle gracefully
+        if (err instanceof TypeError) {
+          this.log.error(err.message);
+        }
       }
-    }
+    })();
   }
+}
+
+export interface Sensor {
+  version: string;
+  sensor_id: string;
+  sensor_name: string;
+  sensor_mac_addr: string;
+  // owner_id: string;
+  // type: "DHT"
+  // alert_interval: "1800"
+  send_interval: string;
+  last_temp: number;
+  last_humidity: number;
+  // last_voltage: 3
+  battery_pct: number;
+  // wifi_connect_time: 1
+  // rssi: -37
+  // last_checkin: "2022-05-12 19:09:41-00:00Z"
+  // next_checkin: "2022-05-12 19:39:41-00:00Z"
+  // ssid: ""
+  offline: string;
+  // alerts: []
+  // use_sensor_settings: 0
+  // temp_offset: "0"
+  // humidity_offset: "0"
+  // alert_temp_below: ""
+  // alert_temp_above: ""
+  // alert_humidity_below: ""
+  // alert_humidity_above: ""
+  // connection_sensitivity: "3"
+  // use_alert_interval: 0
+  // use_offset: "0",
 }
