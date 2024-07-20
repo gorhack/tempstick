@@ -16,6 +16,7 @@ You will need your API key, provided in your [account](https://mytempstick.com/a
 - [ ] Handle API errors gracefully
 - [ ] Use offsets (`probe_temp_offset`, `humidity_offset`, `temp_offset`) for calibrated sensors
 - [ ] Request latest readings based on `send_interval` and `next_checkin`
+- [ ] Homebridge [verified](https://github.com/homebridge/verified)
 - [ ] Request updated documentation in [API](https://tempstickapi.com/docs/) for undocumented parameters
 (`last_tcTemp`, for example)
 

@@ -118,11 +118,12 @@ export class TempStickHomebridgePlatform implements DynamicPlatformPlugin {
           }
 
           // TODO use calibrated settings: probe_temp_offset, humidity_offset, temp_offset
-          this.log.info(`Updated accessory ${sensor.sensor_name}. ` +
-                `It is ${parseInt(sensor.offline) ? 'offline' : 'online'} with the last ambient temp was ${sensor.last_temp}°C ` +
-                `and ambient humidity of ${sensor.last_humidity}% ` +
-                `${sensor.last_tcTemp ? `and a probe temp of ${sensor.last_tcTemp}°C ` : ''}` +
-                `with a battery level at ${sensor.battery_pct}%`);
+          this.log.info(`Initialized accessory ${sensor.sensor_name}. ` +
+                `It is ${parseInt(sensor.offline) ? 'offline' : 'online'}. ` +
+                `The latest ambient temp was ${sensor.last_temp}°C, ` +
+                `ambient humidity of ${sensor.last_humidity}%, ` +
+                `${sensor.last_tcTemp ? `probe temp of ${sensor.last_tcTemp}°C ` : ''}` +
+                `and battery level at ${sensor.battery_pct}%`);
         });
 
       } catch (err) {

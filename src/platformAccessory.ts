@@ -1,6 +1,6 @@
 import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
 
-import {TempStickHomebridgePlatform} from './platform.js';
+import {Sensor, TempStickHomebridgePlatform} from './platform.js';
 
 /**
  * Platform Accessory
@@ -8,16 +8,39 @@ import {TempStickHomebridgePlatform} from './platform.js';
  * Each accessory may expose multiple services of different service types.
  */
 export class TempStickAccessory {
-  private service: Service;
+  private readonly service: Service;
 
-  /**
-   * TODO These are just used to create a working example
-   * You should implement your own code to track the state of your accessory
-   */
-  private sensorStates = {
-    Active: false,
-    LowBattery: true,
-  };
+  private _sensorStates: {
+    AmbientTemp: number;
+    LowBattery: number;
+    Humidity: number;
+    Fault: number;
+    ProbeTemp: number | undefined;
+  } = {
+      AmbientTemp: -10000.0,
+      Fault: 1,
+      Humidity: -1.0,
+      LowBattery: 1,
+      ProbeTemp: undefined,
+    };
+
+  get sensorStates(): { AmbientTemp: number; LowBattery: number; Humidity: number; Fault: number; ProbeTemp: number | undefined } {
+    return this._sensorStates;
+  }
+
+  set sensorStates(sensor: Sensor) {
+    this._sensorStates = {
+      AmbientTemp: sensor.last_temp as number,
+      Fault: parseInt(sensor.offline)
+        ? this.platform.Characteristic.StatusFault.GENERAL_FAULT
+        : this.platform.Characteristic.StatusFault.NO_FAULT,
+      Humidity: sensor.last_humidity as number,
+      LowBattery: sensor.battery_pct < 30
+        ? this.platform.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW
+        : this.platform.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL,
+      ProbeTemp: sensor.last_tcTemp ? parseFloat(sensor.last_tcTemp) : undefined,
+    };
+  }
 
   constructor(
     private readonly platform: TempStickHomebridgePlatform,
@@ -31,8 +54,9 @@ export class TempStickAccessory {
         'TempStick-' + accessory.context.device.type + '-' + accessory.context.device.version)
       .setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.device.sensor_id);
 
-    // get the LightBulb service if it exists, otherwise create a new LightBulb service
-    // you can create multiple services for each accessory
+    // initialize sensorStates from the constructor accessory device
+    this.sensorStates = this.accessory.context.device;
+
     /**
      * Creating multiple services of the same type.
      *
@@ -44,11 +68,9 @@ export class TempStickAccessory {
      * can use the same subtype id.)
      */
 
-    // Example: add two "motion sensor" services to the accessory
     const ambientTemperatureService = this.accessory.getService('Ambient Temperature Sensor') ||
       this.accessory.addService(this.platform.Service.TemperatureSensor, 'Ambient Temperature Sensor', 'AmbientTemperatureSensor');
     ambientTemperatureService.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName + ' Ambient Temp Sensor');
-
 
     // undocumented in V1 API, TODO: test if this exists without a probe
     const probe = !!accessory.context.device.last_tcTemp;
@@ -108,41 +130,29 @@ export class TempStickAccessory {
             headers: headers,
           });
           const sensor = (await res.json()).data;
-
           if (res.status === 200 && sensor) {
-            ambientTemperatureService.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, sensor.last_temp);
-            if (probeTemperatureService && sensor.last_tcTemp) {
-              probeTemperatureService.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, sensor.last_tcTemp);
+            this.sensorStates = sensor;
+            ambientTemperatureService.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, this.sensorStates.AmbientTemp);
+            if (probeTemperatureService && sensor.last_tcTemp && this.sensorStates.ProbeTemp) {
+              // Must reload Homebridge to rediscover devices if a probe is added
+              probeTemperatureService.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, this.sensorStates.ProbeTemp);
             }
-            if (sensor.battery_pct < 30) {
-              services.forEach(service => {
-                service.updateCharacteristic(this.platform.Characteristic.StatusLowBattery,
-                  this.platform.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
-              });
-            } else {
-              services.forEach(service => {
-                service.updateCharacteristic(this.platform.Characteristic.StatusLowBattery,
-                  this.platform.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
-              });
-            }
-            if (parseInt(sensor.offline)) {
-              services.forEach(service => {
-                service.updateCharacteristic(this.platform.Characteristic.StatusFault,
-                  this.platform.Characteristic.StatusFault.GENERAL_FAULT);
-              });
-            } else {
-              services.forEach(service => {
-                service.updateCharacteristic(this.platform.Characteristic.StatusFault,
-                  this.platform.Characteristic.StatusFault.NO_FAULT);
-              });
-            }
-            this.service.updateCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity, sensor.last_humidity);
+            services.forEach(service => {
+              service.updateCharacteristic(this.platform.Characteristic.StatusLowBattery,
+                this.sensorStates.LowBattery);
+            });
+            services.forEach(service => {
+              service.updateCharacteristic(this.platform.Characteristic.StatusFault,
+                this.sensorStates.Fault);
+            });
+            this.service.updateCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity, this.sensorStates.Humidity);
             // TODO use calibrated settings: probe_temp_offset, humidity_offset, temp_offset
-            this.platform.log.info(`Updated accessory ${sensor.sensor_name}. ` +
-                `It is ${parseInt(sensor.offline) ? 'offline' : 'online'} with the last ambient temp was ${sensor.last_temp}°C ` +
-                `and ambient humidity of ${sensor.last_humidity}% ` +
-                `${sensor.last_tcTemp ? `and a probe temp of ${sensor.last_tcTemp}°C ` : ''}` +
-                `with a battery level at ${sensor.battery_pct}%`);
+            this.platform.log.info(`Updated accessory: ${sensor.sensor_name}. ` +
+                `It is ${this.sensorStates.Fault ? 'offline' : 'online'}. `+
+                `The latest ambient temp was ${this.sensorStates.AmbientTemp}°C, ` +
+                `ambient humidity of ${this.sensorStates.Humidity}%, ` +
+                `${sensor.last_tcTemp ? `probe temp of ${this.sensorStates.ProbeTemp}°C ` : ''}` +
+                `and battery level at ${sensor.battery_pct}%`);
           }
 
         } catch (err) {
@@ -170,35 +180,32 @@ export class TempStickAccessory {
    * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
    */
   handleAmbientCurrentTemperatureGet(): CharacteristicValue {
-    return this.accessory.context.device.last_temp;
+    return this.sensorStates.AmbientTemp;
   }
 
   handleProbeCurrentTemperatureGet(): CharacteristicValue {
-    if (this.accessory.context.device.last_tcTemp) {
-      return this.accessory.context.device.last_tcTemp;
+    if (this.sensorStates.ProbeTemp) {
+      return this.sensorStates.ProbeTemp;
     } else {
-      this.platform.log.error('Error getting probe temperature that no longer exists.');
-      return -100000; // should never be called if probe is false
+      // getting probe temperature for service but do not have probe accessory - incorrectly initialized
+      this.platform.log.error('Incorrectly initialized probe. Report error on Homebridge with TempStick device details.');
+      throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.RESOURCE_DOES_NOT_EXIST);
     }
   }
 
   handleCurrentRelativeHumidityGet(): CharacteristicValue {
-    return this.accessory.context.device.last_humidity;
+    return this.sensorStates.Humidity;
   }
 
   handleStatusFaultGet(): CharacteristicValue {
-    if (parseInt(this.accessory.context.device.offline)) {
-      return this.platform.Characteristic.StatusFault.GENERAL_FAULT;
-    } else {
-      return this.platform.Characteristic.StatusFault.NO_FAULT;
+    if (this.sensorStates.Fault) {
+      // accessory is offline
+      throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
+    return this.sensorStates.Fault;
   }
 
   handleLowBatteryGet(): CharacteristicValue {
-    if (this.accessory.context.device.battery_pct < 30) {
-      return this.platform.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW;
-    } else {
-      return this.platform.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
-    }
+    return this.sensorStates.LowBattery;
   }
 }
