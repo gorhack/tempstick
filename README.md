@@ -4,6 +4,21 @@
 
 </p>
 
+# Ideal Sciences Temp Stick Homebridge Plugin
+
+This is an unnofficial plugin to use your [Temp Stick](https://tempstick.com/) sensor with Homebridge.
+
+You will need your API key, provided in your [account](https://mytempstick.com/account#developers) settings.
+
+### Development Roadmap:
+- [x] Discover all sensors and probes
+- [x] Ambient temperature, ambient humidity, and probe temperature
+- [ ] Handle API errors gracefully
+- [ ] Use offsets (`probe_temp_offset`, `humidity_offset`, `temp_offset`) for calibrated sensors
+- [ ] Request latest readings based on `send_interval` and `next_checkin`
+- [ ] Request updated documentation in [API](https://tempstickapi.com/docs/) for undocumented parameters
+(`last_tcTemp`, for example)
+
 <span align="center">
 
 # Homebridge Platform Plugin Template

@@ -47,6 +47,8 @@ export class TempStickAccessory {
     // Example: add two "motion sensor" services to the accessory
     const ambientTemperatureService = this.accessory.getService('Ambient Temperature Sensor') ||
       this.accessory.addService(this.platform.Service.TemperatureSensor, 'Ambient Temperature Sensor', 'AmbientTemperatureSensor');
+    ambientTemperatureService.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName + ' Ambient Temp Sensor');
+
 
     // undocumented in V1 API, TODO: test if this exists without a probe
     const probe = !!accessory.context.device.last_tcTemp;
@@ -54,6 +56,7 @@ export class TempStickAccessory {
     if (probe) {
       probeTemperatureService = this.accessory.getService('Probe Temperature Sensor') ||
           this.accessory.addService(this.platform.Service.TemperatureSensor, 'Probe Temperature Sensor', 'ProbeTemperatureSensor');
+      probeTemperatureService.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName + ' Probe Temp Sensor');
     }
 
     this.service = this.accessory.getService(this.platform.Service.HumiditySensor)
@@ -61,7 +64,7 @@ export class TempStickAccessory {
 
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
-    this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName);
+    this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName + ' Humidity Sensor');
 
     // each service must implement at-minimum the "required characteristics" for the given service type
     // see https://developers.homebridge.io/#/service/Lightbulb

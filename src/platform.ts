@@ -126,7 +126,7 @@ export class TempStickHomebridgePlatform implements DynamicPlatformPlugin {
         });
 
       } catch (err) {
-        // TODO: Catch 406 and other errors and handle gracefully
+        // TODO: Catch 406 and other errors (bad API key, network issue, etc) and handle gracefully
         if (err instanceof TypeError) {
           this.log.error(err.message);
         }
