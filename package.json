@@ -1,7 +1,7 @@
 {
   "displayName": "TempStick",
   "name": "homebridge-tempstick",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Unofficial Ideal Sciences TempStick homebridge plugin.",
   "license": "Apache-2.0",
   "type": "module",
