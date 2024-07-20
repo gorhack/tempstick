@@ -71,9 +71,8 @@ export class TempStickHomebridgePlatform implements DynamicPlatformPlugin {
         const res = await fetch(this.tempstickApiUrl + 'sensors/all', {
           headers: headers,
         });
-        const sensors: [Sensor] = (await res.json()).data.items;
-        // TODO undocumented `tcTemp` in readings for probe temp
-        // TODO add humidity sensors
+        const jsonData = (await res.json());
+        const sensors: [Sensor] = jsonData.data.items;
 
         // loop over the discovered devices and register each one if it has not already been registered
         sensors.forEach(sensor => {
@@ -91,9 +90,6 @@ export class TempStickHomebridgePlatform implements DynamicPlatformPlugin {
 
             // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. e.g.:
             existingAccessory.context.device = sensor;
-            this.log.info(`Updating accessory ${sensor.sensor_name}. ` +
-                `It is ${sensor.offline ? 'offline' : 'online'} with and the last reading was ${sensor.last_temp}°C ` +
-                `with a battery level at ${sensor.battery_pct}%`);
             this.api.updatePlatformAccessories([existingAccessory]);
 
             // create the accessory handler for the restored accessory
@@ -106,10 +102,6 @@ export class TempStickHomebridgePlatform implements DynamicPlatformPlugin {
             // this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
           } else {
             // the accessory does not yet exist, so we need to create it
-            this.log.info(`Adding new accessory ${sensor.sensor_name}. ` +
-                `It is ${sensor.offline ? 'offline' : 'online'} with and the last reading was ${sensor.last_temp}°C ` +
-                `with a battery level at ${sensor.battery_pct}%`);
-
             // create a new accessory
             const accessory = new this.api.platformAccessory(sensor.sensor_name, uuid);
 
@@ -124,6 +116,13 @@ export class TempStickHomebridgePlatform implements DynamicPlatformPlugin {
             // link the accessory to your platform
             this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
           }
+
+          // TODO use calibrated settings: probe_temp_offset, humidity_offset, temp_offset
+          this.log.info(`Updated accessory ${sensor.sensor_name}. ` +
+                `It is ${parseInt(sensor.offline) ? 'offline' : 'online'} with the last ambient temp was ${sensor.last_temp}°C ` +
+                `and ambient humidity of ${sensor.last_humidity}% ` +
+                `${sensor.last_tcTemp ? `and a probe temp of ${sensor.last_tcTemp}°C ` : ''}` +
+                `with a battery level at ${sensor.battery_pct}%`);
         });
 
       } catch (err) {
@@ -136,6 +135,7 @@ export class TempStickHomebridgePlatform implements DynamicPlatformPlugin {
   }
 }
 
+// TODO use calibrated settings: probe_temp_offset, humidity_offset, temp_offset
 export interface Sensor {
   version: string;
   sensor_id: string;
@@ -145,8 +145,8 @@ export interface Sensor {
   // type: "DHT"
   // alert_interval: "1800"
   send_interval: string;
-  last_temp: number;
-  last_humidity: number;
+  last_temp: number; // ambient sensor temp
+  last_humidity: number; // ambient sensor humidity
   // last_voltage: 3
   battery_pct: number;
   // wifi_connect_time: 1
@@ -166,4 +166,5 @@ export interface Sensor {
   // connection_sensitivity: "3"
   // use_alert_interval: 0
   // use_offset: "0",
+  last_tcTemp?: string; // undocumented probe temperature
 }
