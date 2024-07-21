@@ -1,6 +1,7 @@
-import {CharacteristicValue, PlatformAccessory, Service} from 'homebridge';
+import { CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
 
-import {Sensor, TempStickHomebridgePlatform} from './platform.js';
+import { TempStickHomebridgePlatform } from './platform.js';
+import { formatErrorMessage, requestTempStickApi, Sensor } from './utils.js';
 
 /**
  * Platform Accessory
@@ -123,42 +124,39 @@ export class TempStickAccessory {
     setInterval(() => {
       (async () => {
         try {
-          const headers = new Headers();
-          headers.append('X-API-KEY', this.platform.config.apiKey);
-          headers.append('Content-Type', 'text/plain');
-          const res = await fetch(this.platform.tempstickApiUrl + `sensor/${this.accessory.context.device.sensor_id}`, {
-            headers: headers,
+          const sensor = await requestTempStickApi(
+            `${this.platform.tempstickApiUrl}sensor/${this.accessory.context.device.sensor_id}`,
+            this.platform.config.apiKey);
+          this.sensorStates = sensor;
+          ambientTemperatureService.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, this.sensorStates.AmbientTemp);
+          if (probeTemperatureService && sensor.last_tcTemp && this.sensorStates.ProbeTemp) {
+            // Must reload Homebridge to rediscover devices if a probe is added
+            probeTemperatureService.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, this.sensorStates.ProbeTemp);
+          }
+          services.forEach(service => {
+            service.updateCharacteristic(this.platform.Characteristic.StatusLowBattery,
+              this.sensorStates.LowBattery);
           });
-          const sensor = (await res.json()).data;
-          if (res.status === 200 && sensor) {
-            this.sensorStates = sensor;
-            ambientTemperatureService.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, this.sensorStates.AmbientTemp);
-            if (probeTemperatureService && sensor.last_tcTemp && this.sensorStates.ProbeTemp) {
-              // Must reload Homebridge to rediscover devices if a probe is added
-              probeTemperatureService.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, this.sensorStates.ProbeTemp);
-            }
-            services.forEach(service => {
-              service.updateCharacteristic(this.platform.Characteristic.StatusLowBattery,
-                this.sensorStates.LowBattery);
-            });
-            services.forEach(service => {
-              service.updateCharacteristic(this.platform.Characteristic.StatusFault,
-                this.sensorStates.Fault);
-            });
-            this.service.updateCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity, this.sensorStates.Humidity);
-            // TODO use calibrated settings: probe_temp_offset, humidity_offset, temp_offset
-            this.platform.log.info(`Updated accessory: ${sensor.sensor_name}. ` +
+          services.forEach(service => {
+            service.updateCharacteristic(this.platform.Characteristic.StatusFault,
+              this.sensorStates.Fault);
+          });
+          this.service.updateCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity, this.sensorStates.Humidity);
+          // TODO use calibrated settings: probe_temp_offset, humidity_offset, temp_offset
+          this.platform.log.info(`Updated accessory: ${sensor.sensor_name}. ` +
                 `It is ${this.sensorStates.Fault ? 'offline' : 'online'}. `+
                 `The latest ambient temp was ${this.sensorStates.AmbientTemp}°C, ` +
                 `ambient humidity of ${this.sensorStates.Humidity}%, ` +
                 `${sensor.last_tcTemp ? `probe temp of ${this.sensorStates.ProbeTemp}°C ` : ''}` +
                 `and battery level at ${sensor.battery_pct}%`);
-          }
 
         } catch (err) {
-        // TODO: Catch 406 and other errors and handle gracefully
           if (err instanceof TypeError) {
-            this.platform.log.error(err.message);
+            this.platform.log.error(formatErrorMessage(err.message, 'Unknown TypeError.'));
+          } else if (err instanceof Error) {
+            this.platform.log.error(formatErrorMessage(err.message, 'Error requesting accessory.'));
+          } else {
+            this.platform.log.error(formatErrorMessage(String(err), 'Unknown error.'));
           }
         }
       })();
@@ -188,7 +186,7 @@ export class TempStickAccessory {
       return this.sensorStates.ProbeTemp;
     } else {
       // getting probe temperature for service but do not have probe accessory - incorrectly initialized
-      this.platform.log.error('Incorrectly initialized probe. Report error on Homebridge with TempStick device details.');
+      this.platform.log.error(formatErrorMessage('Incorrectly initialized temperature probe.'));
       throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.RESOURCE_DOES_NOT_EXIST);
     }
   }

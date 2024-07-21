@@ -8,17 +8,18 @@
 
 This is an unnofficial plugin to use your [Temp Stick](https://tempstick.com/) sensor with Homebridge.
 
-You will need your API key, provided in your [account](https://mytempstick.com/account#developers) settings.
+You will need your API key, provided in your [account](https://mytempstick.com/account#developers) settings. This plugin relies on the API provided by Temp
+Stick and is dependent on its uptime to retrieve your latest sensors and readings. 
 
 ### Development Roadmap:
 - [x] Discover all sensors and probes
 - [x] Ambient temperature, ambient humidity, and probe temperature
-- [ ] Handle API errors gracefully
+- [x] Handle API errors gracefully
 - [ ] Use offsets (`probe_temp_offset`, `humidity_offset`, `temp_offset`) for calibrated sensors
 - [ ] Request latest readings based on `send_interval` and `next_checkin`
 - [ ] Homebridge [verified](https://github.com/homebridge/verified)
 - [ ] Request updated documentation in [API](https://tempstickapi.com/docs/) for undocumented parameters
-(`last_tcTemp`, for example)
+(`last_tcTemp` and `groups` for example)
 
 <span align="center">
 

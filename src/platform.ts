@@ -2,6 +2,7 @@ import { API, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig,
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
 import { TempStickAccessory } from './platformAccessory.js';
+import { formatErrorMessage, requestTempStickApi, Sensor } from './utils.js';
 
 /**
  * HomebridgePlatform
@@ -62,18 +63,11 @@ export class TempStickHomebridgePlatform implements DynamicPlatformPlugin {
    * must not be registered again to prevent "duplicate UUID" errors.
    */
   discoverDevices() {
-    this.log.debug('discovering devices with apikey ' + this.config.apiKey);
+    this.log.debug('Discovering devices with apikey ' + this.config.apiKey);
     (async () => {
       try {
-        const headers = new Headers();
-        headers.append('X-API-KEY', this.config.apiKey);
-        headers.append('Content-Type', 'text/plain');
-        const res = await fetch(this.tempstickApiUrl + 'sensors/all', {
-          headers: headers,
-        });
-        const jsonData = (await res.json());
-        const sensors: [Sensor] = jsonData.data.items;
-
+        const request = await requestTempStickApi(this.tempstickApiUrl + 'sensors/all', this.config.apiKey);
+        const sensors: [Sensor] = request.items;
         // loop over the discovered devices and register each one if it has not already been registered
         sensors.forEach(sensor => {
           // generate a unique id for the accessory this should be generated from
@@ -127,45 +121,14 @@ export class TempStickHomebridgePlatform implements DynamicPlatformPlugin {
         });
 
       } catch (err) {
-        // TODO: Catch 406 and other errors (bad API key, network issue, etc) and handle gracefully
         if (err instanceof TypeError) {
-          this.log.error(err.message);
+          this.log.error(formatErrorMessage(err.message, 'Unknown TypeError.'));
+        } else if (err instanceof Error) {
+          this.log.error(formatErrorMessage(err.message, 'Error requesting all devices'));
+        } else {
+          this.log.error(formatErrorMessage(String(err), 'Unknown error.'));
         }
       }
     })();
   }
-}
-
-// TODO use calibrated settings: probe_temp_offset, humidity_offset, temp_offset
-export interface Sensor {
-  version: string;
-  sensor_id: string;
-  sensor_name: string;
-  sensor_mac_addr: string;
-  // owner_id: string;
-  // type: "DHT"
-  // alert_interval: "1800"
-  send_interval: string;
-  last_temp: number; // ambient sensor temp
-  last_humidity: number; // ambient sensor humidity
-  // last_voltage: 3
-  battery_pct: number;
-  // wifi_connect_time: 1
-  // rssi: -37
-  // last_checkin: "2022-05-12 19:09:41-00:00Z"
-  // next_checkin: "2022-05-12 19:39:41-00:00Z"
-  // ssid: ""
-  offline: string;
-  // alerts: []
-  // use_sensor_settings: 0
-  // temp_offset: "0"
-  // humidity_offset: "0"
-  // alert_temp_below: ""
-  // alert_temp_above: ""
-  // alert_humidity_below: ""
-  // alert_humidity_above: ""
-  // connection_sensitivity: "3"
-  // use_alert_interval: 0
-  // use_offset: "0",
-  last_tcTemp?: string; // undocumented probe temperature
 }
