@@ -63,6 +63,10 @@ export class TempStickHomebridgePlatform implements DynamicPlatformPlugin {
    * must not be registered again to prevent "duplicate UUID" errors.
    */
   discoverDevices() {
+    if (!this.config.apiKey) {
+      this.log.error('Must have an API key configured in the plugin configuration.');
+      return;
+    }
     this.log.debug('Discovering devices with apikey ' + this.config.apiKey);
     (async () => {
       try {
@@ -111,12 +115,12 @@ export class TempStickHomebridgePlatform implements DynamicPlatformPlugin {
             this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
           }
 
-          // TODO use calibrated settings: probe_temp_offset, humidity_offset, temp_offset
           this.log.info(`Initialized accessory ${sensor.sensor_name}. ` +
                 `It is ${parseInt(sensor.offline) ? 'offline' : 'online'}. ` +
                 `The latest ambient temp was ${sensor.last_temp}°C, ` +
                 `ambient humidity of ${sensor.last_humidity}%, ` +
-                `${sensor.last_tcTemp ? `probe temp of ${sensor.last_tcTemp}°C ` : ''}` +
+                `${sensor.last_tcTemp && sensor.last_tcTemp !== 'n' && sensor.TC_TYPE ?
+                  `${sensor.TC_TYPE}-probe temp of ${sensor.last_tcTemp}°C, ` : ''}` +
                 `and battery level at ${sensor.battery_pct}%`);
         });
 

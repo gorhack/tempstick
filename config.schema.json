@@ -17,6 +17,14 @@
         "required": true,
         "pattern": "^[A-Za-z0-9]*$",
         "description": "Found at https://mytempstick.com/account#developers"
+      },
+      "delay": {
+        "title": "Delay (in seconds)",
+        "type": "number",
+        "required": false,
+        "placeholder": "5",
+        "pattern": "^[0-9]*$",
+        "description": "Add an additional delay if your Homekit readings are behind your Temp Stick readings."
       }
     }
   }

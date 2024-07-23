@@ -1,35 +1,20 @@
-// TODO use calibrated settings: probe_temp_offset, humidity_offset, temp_offset
 export interface Sensor {
   version: string;
   sensor_id: string;
   sensor_name: string;
   sensor_mac_addr: string;
-  // owner_id: string;
-  // type: "DHT"
-  // alert_interval: "1800"
-  send_interval: string;
+  send_interval: string; // In seconds, how often the sensor should wake up and send readings
   last_temp: number; // ambient sensor temp
   last_humidity: number; // ambient sensor humidity
-  // last_voltage: 3
   battery_pct: number;
-  // wifi_connect_time: 1
-  // rssi: -37
-  // last_checkin: "2022-05-12 19:09:41-00:00Z"
-  // next_checkin: "2022-05-12 19:39:41-00:00Z"
-  // ssid: ""
-  offline: string;
-  // alerts: []
-  // use_sensor_settings: 0
-  // temp_offset: "0"
-  // humidity_offset: "0"
-  // alert_temp_below: ""
-  // alert_temp_above: ""
-  // alert_humidity_below: ""
-  // alert_humidity_above: ""
-  // connection_sensitivity: "3"
-  // use_alert_interval: 0
-  // use_offset: "0",
-  last_tcTemp?: string; // undocumented probe temperature
+  // API: All timestamps returned by the API are in the UTC time zone (denoted with "Z" or time offset +00:00).
+  // Actually returns `YYYY-MM-DD HH:MM:SS` with no timezone information
+  next_checkin: string; // Next DTG when sensor will wake and send reading
+  wifi_connect_time: number; // Time sensor takes to connect to Wi-Fi
+  offline: string; // Whether the sensor is offline or online
+  // last_tcTemp has returned both strings and numbers of valid temperatures
+  last_tcTemp?: string; // undocumented thermocouple probe temperature - returns "n" when no probe
+  TC_TYPE?: string; // undocumented thermocouple probe type
 }
 
 export const requestTempStickApi = async (apiUrl: string, apiKey: string) => {

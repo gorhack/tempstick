@@ -39,8 +39,9 @@ export class TempStickAccessory {
       LowBattery: sensor.battery_pct < 30
         ? this.platform.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW
         : this.platform.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL,
-      ProbeTemp: sensor.last_tcTemp ? parseFloat(sensor.last_tcTemp) : undefined,
+      ProbeTemp: sensor.last_tcTemp && sensor.last_tcTemp !== 'n' ? parseFloat(sensor.last_tcTemp) : undefined,
     };
+    // Does not update "settings" such as names or send_interval without reloading the plugin
   }
 
   constructor(
@@ -70,20 +71,20 @@ export class TempStickAccessory {
      */
 
     const ambientTemperatureService = this.accessory.getService('Ambient Temperature Sensor') ||
-      this.accessory.addService(this.platform.Service.TemperatureSensor, 'Ambient Temperature Sensor', 'AmbientTemperatureSensor');
+        this.accessory.addService(this.platform.Service.TemperatureSensor, 'Ambient Temperature Sensor', 'AmbientTemperatureSensor');
     ambientTemperatureService.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName + ' Ambient Temp Sensor');
 
-    // undocumented in V1 API, TODO: test if this exists without a probe
-    const probe = !!accessory.context.device.last_tcTemp;
+    // undocumented in V1 API
     let probeTemperatureService: Service | undefined = undefined;
-    if (probe) {
+    if (!!accessory.context.device.last_tcTemp && accessory.context.device.last_tcTemp !== 'n' && !!accessory.context.device.TC_TYPE) {
       probeTemperatureService = this.accessory.getService('Probe Temperature Sensor') ||
           this.accessory.addService(this.platform.Service.TemperatureSensor, 'Probe Temperature Sensor', 'ProbeTemperatureSensor');
-      probeTemperatureService.setCharacteristic(this.platform.Characteristic.Name, accessory.displayName + ' Probe Temp Sensor');
+      probeTemperatureService.setCharacteristic(this.platform.Characteristic.Name,
+        `${accessory.displayName} ${accessory.context.device.TC_TYPE}-Probe Temp Sensor`);
     }
 
     this.service = this.accessory.getService(this.platform.Service.HumiditySensor)
-                    || this.accessory.addService(this.platform.Service.HumiditySensor);
+        || this.accessory.addService(this.platform.Service.HumiditySensor);
 
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
@@ -101,11 +102,9 @@ export class TempStickAccessory {
     }
     this.service.getCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity)
       .onGet(this.handleCurrentRelativeHumidityGet.bind(this));
-    let services: Service[];
+    const services: Service[] = [this.service, ambientTemperatureService];
     if (probeTemperatureService) {
-      services = [this.service, ambientTemperatureService, probeTemperatureService];
-    } else {
-      services = [this.service, ambientTemperatureService];
+      services.push(probeTemperatureService);
     }
     services.forEach(service => {
       service.getCharacteristic(this.platform.Characteristic.StatusFault).onGet(this.handleStatusFaultGet.bind(this));
@@ -121,47 +120,68 @@ export class TempStickAccessory {
      * the `updateCharacteristic` method.
      *
      */
-    setInterval(() => {
-      (async () => {
-        try {
-          const sensor = await requestTempStickApi(
-            `${this.platform.tempstickApiUrl}sensor/${this.accessory.context.device.sensor_id}`,
-            this.platform.config.apiKey);
-          this.sensorStates = sensor;
-          ambientTemperatureService.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, this.sensorStates.AmbientTemp);
-          if (probeTemperatureService && sensor.last_tcTemp && this.sensorStates.ProbeTemp) {
-            // Must reload Homebridge to rediscover devices if a probe is added
-            probeTemperatureService.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, this.sensorStates.ProbeTemp);
-          }
-          services.forEach(service => {
-            service.updateCharacteristic(this.platform.Characteristic.StatusLowBattery,
-              this.sensorStates.LowBattery);
-          });
-          services.forEach(service => {
-            service.updateCharacteristic(this.platform.Characteristic.StatusFault,
-              this.sensorStates.Fault);
-          });
-          this.service.updateCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity, this.sensorStates.Humidity);
-          // TODO use calibrated settings: probe_temp_offset, humidity_offset, temp_offset
-          this.platform.log.info(`Updated accessory: ${sensor.sensor_name}. ` +
-                `It is ${this.sensorStates.Fault ? 'offline' : 'online'}. `+
-                `The latest ambient temp was ${this.sensorStates.AmbientTemp}°C, ` +
-                `ambient humidity of ${this.sensorStates.Humidity}%, ` +
-                `${sensor.last_tcTemp ? `probe temp of ${this.sensorStates.ProbeTemp}°C ` : ''}` +
-                `and battery level at ${sensor.battery_pct}%`);
 
-        } catch (err) {
-          if (err instanceof TypeError) {
-            this.platform.log.error(formatErrorMessage(err.message, 'Unknown TypeError.'));
-          } else if (err instanceof Error) {
-            this.platform.log.error(formatErrorMessage(err.message, 'Error requesting accessory.'));
-          } else {
-            this.platform.log.error(formatErrorMessage(String(err), 'Unknown error.'));
-          }
+    const getAndSetSensorStates = async () => {
+      try {
+        const sensor = await requestTempStickApi(
+          `${this.platform.tempstickApiUrl}sensor/${this.accessory.context.device.sensor_id}`,
+          this.platform.config.apiKey);
+        this.sensorStates = sensor;
+        ambientTemperatureService.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, this.sensorStates.AmbientTemp);
+        if (probeTemperatureService && sensor.last_tcTemp && this.sensorStates.ProbeTemp) {
+          // Must reload Homebridge to rediscover devices if a probe is added
+          probeTemperatureService.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, this.sensorStates.ProbeTemp);
         }
-      })();
-      // seconds to milliseconds - at worst case will be delayed by how often the sensor should wake up and send readings
-    }, parseInt(this.accessory.context.device.send_interval) * 1000);
+        // Add Low Battery and Fault Status to all available services
+        services.forEach(service => {
+          service.updateCharacteristic(this.platform.Characteristic.StatusLowBattery,
+            this.sensorStates.LowBattery);
+          service.updateCharacteristic(this.platform.Characteristic.StatusFault,
+            this.sensorStates.Fault);
+        });
+        this.service.updateCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity, this.sensorStates.Humidity);
+        this.platform.log.info(`Updated accessory: ${sensor.sensor_name}. ` +
+            `It is ${this.sensorStates.Fault ? 'offline' : 'online'}. ` +
+            `The latest ambient temp was ${this.sensorStates.AmbientTemp}°C, ` +
+            `ambient humidity of ${this.sensorStates.Humidity}%, ` +
+            `${sensor.last_tcTemp && sensor.last_tcTemp !== 'n' ? `probe temp of ${this.sensorStates.ProbeTemp}°C, ` : ''}` +
+            `and battery level at ${sensor.battery_pct}%`);
+
+      } catch (err) {
+        if (err instanceof TypeError) {
+          this.platform.log.error(formatErrorMessage(err.message, 'Unknown TypeError.'));
+        } else if (err instanceof Error) {
+          this.platform.log.error(formatErrorMessage(err.message, 'Error requesting accessory.'));
+        } else {
+          this.platform.log.error(formatErrorMessage(String(err), 'Unknown error.'));
+        }
+      }
+    };
+    // Delay for sensor to connect to Wi-Fi to milliseconds
+    const sensorDelay = parseInt(this.accessory.context.device.wifi_connect_time) * 1000;
+    // Have to add ' GMT' or 'Z' to the next_checkin since no Time Zone is included in the response
+    let timeToNext = new Date(this.accessory.context.device.next_checkin + ' GMT').getTime() - Date.now() + sensorDelay;
+    if (isNaN(timeToNext)) {
+      this.platform.log.error(formatErrorMessage(
+        `Next Checkin is invalid: ${this.accessory.context.device.next_checkin}`,
+        `Unsuccessfully parsed the next checkin date of the sensor ${this.accessory.context.sensor_id}`));
+    }
+    let timeBetweenSubsequent = parseInt(this.accessory.context.device.send_interval) * 1000 + sensorDelay;
+    // Add additional user defined delay from plugin configuration, in seconds, to milliseconds
+    if (this.platform.config.delay) {
+      timeToNext += (parseInt(this.platform.config.delay) * 1000);
+      timeBetweenSubsequent += (parseInt(this.platform.config.delay) * 1000);
+    }
+    const initialRun = setInterval(async () => {
+      // only run the initial once to get on the correct sensor send_interval to retrieve sensor results as soon as possible
+      clearInterval(initialRun);
+      await getAndSetSensorStates();
+      setInterval(async () => {
+        await getAndSetSensorStates();
+      // on the subsequent runs utilize the `send_interval` from the sensor
+      }, timeBetweenSubsequent);
+      // only on the "first" request of the sensor retrieve it after the `next_checkin`
+    }, timeToNext);
   }
 
   /**
@@ -186,7 +206,7 @@ export class TempStickAccessory {
       return this.sensorStates.ProbeTemp;
     } else {
       // getting probe temperature for service but do not have probe accessory - incorrectly initialized
-      this.platform.log.error(formatErrorMessage('Incorrectly initialized temperature probe.'));
+      this.platform.log.error(formatErrorMessage('Incorrectly initialized or removed temperature probe.'));
       throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.RESOURCE_DOES_NOT_EXIST);
     }
   }

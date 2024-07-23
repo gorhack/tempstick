@@ -3,6 +3,7 @@
   "name": "homebridge-tempstick",
   "version": "1.0.3",
   "description": "Unofficial Ideal Sciences TempStick homebridge plugin.",
+  "homepage": "https://github.com/gorhack/tempstick",
   "license": "Apache-2.0",
   "type": "module",
   "repository": {
@@ -19,12 +20,15 @@
   "main": "dist/index.js",
   "scripts": {
     "lint": "eslint src/**/*.ts --max-warnings=0",
-    "watch": "npm run build && sudo hb-service unlink && sudo hb-service link && nodemon",
+    "watch": "npm run build && sudo hb-service unlink || true && sudo hb-service link && nodemon",
     "build": "rimraf ./dist && tsc",
     "prepublishOnly": "npm run lint && npm run build"
   },
   "keywords": [
-    "homebridge-plugin"
+    "homebridge-plugin",
+    "temp stick",
+    "tempstick",
+    "ideal sciences"
   ],
   "devDependencies": {
     "@types/node": "^20.14.10",
