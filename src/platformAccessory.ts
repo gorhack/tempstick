@@ -166,11 +166,10 @@ export class TempStickAccessory {
         `Next Checkin is invalid: ${this.accessory.context.device.next_checkin}`,
         `Unsuccessfully parsed the next checkin date of the sensor ${this.accessory.context.sensor_id}`));
     }
-    let timeBetweenSubsequent = parseInt(this.accessory.context.device.send_interval) * 1000 + sensorDelay;
+    const timeBetweenSubsequent = parseInt(this.accessory.context.device.send_interval) * 1000 + sensorDelay;
     // Add additional user defined delay from plugin configuration, in seconds, to milliseconds
     if (this.platform.config.delay) {
       timeToNext += (parseInt(this.platform.config.delay) * 1000);
-      timeBetweenSubsequent += (parseInt(this.platform.config.delay) * 1000);
     }
     const initialRun = setInterval(async () => {
       // only run the initial once to get on the correct sensor send_interval to retrieve sensor results as soon as possible
