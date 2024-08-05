@@ -51,10 +51,10 @@ export class TempStickAccessory {
     // set accessory information
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Ideal Sciences, Inc.')
-      // TODO verify type / version equivalent to model
-      .setCharacteristic(this.platform.Characteristic.Model,
-        'TempStick-' + accessory.context.device.type + '-' + accessory.context.device.version)
-      .setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.device.sensor_id);
+      .setCharacteristic(this.platform.Characteristic.Model, 'TempStick-' + accessory.context.device.type)
+      .setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.device.sensor_id)
+      // Firmware version in API is XXXX, in app X.X.XX. Unable to deterministically parse major/minor/patch
+      .setCharacteristic(this.platform.Characteristic.FirmwareRevision, accessory.context.device.version);
 
     // initialize sensorStates from the constructor accessory device
     this.sensorStates = this.accessory.context.device;

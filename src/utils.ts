@@ -1,5 +1,5 @@
 export interface Sensor {
-  version: string;
+  version: string; // Firmware version XXXX -> X.X.XX
   sensor_id: string;
   sensor_name: string;
   sensor_mac_addr: string;
