@@ -1,8 +1,6 @@
 <p align="center">
-
 <img src="https://github.com/homebridge/branding/raw/latest/logos/homebridge-wordmark-logo-vertical.png" width="150">
-
-
+</p>
 <p align="center">
 <a href="https://www.npmjs.com/package/homebridge-tempstick"><img title="npm version" src="https://badgen.net/npm/v/homebridge-tempstick?label=stable"></a>
 <a href="https://www.npmjs.com/package/homebridge-tempstick"><img title="npm downloads" src="https://badgen.net/npm/dt/homebridge-tempstick"></a>
@@ -23,6 +21,28 @@ plugin, will display live Temp Stick readings as the sensor is only active durin
 
 If you change any settings or names in your Temp Stick account you may have to reload the plugin to see those changes
 reflected and receive timely results.
+
+### Notifications with [Ntfy](https://ntfy.sh/)
+
+#### What you need:
+1. Free account at [Ntfy](https://ntfy.sh/) (or another Ntfy instance).
+2. Ntfy access token found under /account.
+3. Unique topic (temperature/humidity alerts are generally not sensitive in nature).
+
+The easiest way to get notifications through Homekit for sensor data is adding an automation. To do so, go to your sensor
+in Homekit and click `Add Automation`. For ambient and probe sensors you can add automations for temperature rising above
+or dropping below a specific temperature or humidity. Once you confirm the temperature of humidity, click `Next` and
+at the bottom `Convert to Shortcut`. Configure your Shortcut to Get the appropriate sensor's Current Temperature or Humidity
+and make a `POST`/`PUT` request to Ntfy to [publish a message](https://docs.ntfy.sh/publish/#__tabbed_29_1).
+Add a Header with `Key`=`Authorization` and `Text`=
+`Bearer [your access token]`. If you want your notification to have a title, add another Header with the `Key`=`X-Title`
+and `Text`=`Your notification's title`.
+
+An example configuration that publishes a notification with a Title and message:
+
+<p align="center">
+<img src="./images/TempStickNotificationShortcut.JPEG" width="250">
+</p>
 
 ### Development Roadmap:
 - [x] Discover all sensors and probes
