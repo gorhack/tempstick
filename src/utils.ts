@@ -17,6 +17,12 @@ export interface Sensor {
   TC_TYPE?: string; // undocumented thermocouple probe type
 }
 
+export const formatErrorMessage = (errorMessage: string, errorContext?: string): string => {
+  return `${errorContext ? errorContext : ''} Report the following response in our issue tracker: ` +
+          'https://github.com/gorhack/tempstick/issues\n' +
+          `${errorMessage}`;
+};
+
 export const requestTempStickApi = async (apiUrl: string, apiKey: string) => {
   // https://tempstickapi.com/docs/ v1.0.0
   // returns the `data` from the requested API
@@ -29,7 +35,7 @@ export const requestTempStickApi = async (apiUrl: string, apiKey: string) => {
   const headers = new Headers();
   headers.append('X-API-KEY', apiKey);
   headers.append('Content-Type', 'text/plain');
-  const res = await fetch(apiUrl, {headers: headers});
+  const res = await fetch(apiUrl, { headers: headers });
   if (res.status !== 200) {
     // catch all non-200 error codes (400, 500, etc)
     throw new Error(formatErrorMessage(JSON.stringify(res),
@@ -44,10 +50,4 @@ export const requestTempStickApi = async (apiUrl: string, apiKey: string) => {
         'inability to request your device(s).'));
   }
   return jsonData.data;
-};
-
-export const formatErrorMessage = (errorMessage: string, errorContext?: string): string => {
-  return `${errorContext ? errorContext : ''} Report the following response in our issue tracker: ` +
-          'https://github.com/gorhack/tempstick/issues\n' +
-          `${errorMessage}`;
 };
