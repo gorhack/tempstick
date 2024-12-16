@@ -2,6 +2,7 @@
 <img src="https://github.com/homebridge/branding/raw/latest/logos/homebridge-wordmark-logo-vertical.png" width="150">
 </p>
 <p align="center">
+<a href="https://github.com/homebridge/homebridge/wiki/Verified-Plugins"><img title="verified by homebridge" src="https://badgen.net/badge/homebridge/verified/purple"></a>
 <a href="https://www.npmjs.com/package/homebridge-tempstick"><img title="npm version" src="https://badgen.net/npm/v/homebridge-tempstick?label=stable"></a>
 <a href="https://www.npmjs.com/package/homebridge-tempstick"><img title="npm downloads" src="https://badgen.net/npm/dt/homebridge-tempstick"></a>
 <a href="https://github.com/gorhack/tempstick/actions/workflows/build.yml"><img title="Node Build" src="https://github.com/gorhack/tempstick/actions/workflows/build.yml/badge.svg"></a>
@@ -51,7 +52,7 @@ An example configuration that publishes a notification with a Title and message:
 - [x] Use offsets (`probe_temp_offset`, `humidity_offset`, `temp_offset`) for calibrated sensors
   - `last_tcTemp`, `last_humidity`, and `last_temp` include any user-set offset
 - [x] Request latest readings based on `send_interval` and `next_checkin`
-- [ ] Homebridge [verified](https://github.com/homebridge/verified)
+- [x] Homebridge [verified](https://github.com/homebridge/verified)
 - [x] Request updated documentation in [API](https://tempstickapi.com/docs/) for undocumented parameters
 (`last_tcTemp` and `groups` for example)
   - Response: "...you don't need to worry about these values as they don't have a direct impact
