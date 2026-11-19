@@ -1,28 +1,28 @@
 {
   "displayName": "TempStick",
   "name": "homebridge-tempstick",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Unofficial Ideal Sciences TempStick homebridge plugin.",
   "homepage": "https://github.com/gorhack/tempstick",
   "license": "Apache-2.0",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gorhack/tempstick.git"
+    "url": "https://github.com/gorhack/tempstick.git"
   },
   "bugs": {
     "url": "https://github.com/gorhack/tempstick/issues"
   },
   "engines": {
-    "node": "^18.20.4 || ^20.16.0 || ^22.6.0",
-    "homebridge": "^1.8.0 || ^2.0.0-beta.0"
+    "node": "^22.12.0 || ^24.0.0 || ^26.0.0",
+    "homebridge": "^1.8.0 || ^2.0.0"
   },
   "main": "dist/index.js",
   "scripts": {
-    "lint": "eslint src/**/*.ts --max-warnings=0",
-    "watch": "npm run build && sudo hb-service unlink || true && sudo hb-service link && nodemon",
     "build": "rimraf ./dist && tsc",
-    "prepublishOnly": "npm run lint && npm run build"
+    "lint": "eslint . --max-warnings=0",
+    "prepublishOnly": "npm run lint && npm run build",
+    "watch": "npm run build && npm link && nodemon"
   },
   "keywords": [
     "homebridge-plugin",
@@ -30,16 +30,18 @@
     "tempstick",
     "ideal sciences"
   ],
+  "dependencies": {
+    "homebridge-lib": "^8.1.4"
+  },
   "devDependencies": {
-    "@eslint/js": "^9.17.0",
-    "@types/eslint__js": "^8.42.3",
-    "@types/node": "^22.6.0",
-    "eslint": "^9.17.0",
-    "homebridge": "^2.0.0-beta.0",
-    "nodemon": "^3.1.9",
-    "rimraf": "^6.0.1",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.2.0",
+    "eslint": "^10.9.0",
+    "homebridge": "^2.4.0",
+    "nodemon": "^3.1.11",
+    "rimraf": "^6.1.3",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.2",
-    "typescript-eslint": "^8.18.1"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.67.0"
   }
 }
