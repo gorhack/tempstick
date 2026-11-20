@@ -148,10 +148,16 @@ export class TempStickAccessory {
             `and battery level at ${sensor.battery_pct}%`);
 
       } catch (err) {
+        // A failed fetch must not leave stale sensor data looking valid in HomeKit - mark the
+        // accessory faulted so viewers see "Not Responding" instead of a frozen last-good reading.
+        this._sensorStates.Fault = this.platform.Characteristic.StatusFault.GENERAL_FAULT;
+        services.forEach(service => {
+          service.updateCharacteristic(this.platform.Characteristic.StatusFault, this._sensorStates.Fault);
+        });
         if (err instanceof TypeError) {
-          this.platform.log.error(formatErrorMessage(err.message, 'Unknown TypeError.'));
+          this.platform.log.error(formatErrorMessage(err.stack ?? err.message, 'Unknown TypeError.'));
         } else if (err instanceof Error) {
-          this.platform.log.error(formatErrorMessage(err.message, 'Error requesting accessory.'));
+          this.platform.log.error(formatErrorMessage(err.stack ?? err.message, 'Error requesting accessory.'));
         } else {
           this.platform.log.error(formatErrorMessage(String(err), 'Unknown error.'));
         }

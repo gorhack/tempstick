@@ -126,9 +126,9 @@ export class TempStickHomebridgePlatform implements DynamicPlatformPlugin {
 
       } catch (err) {
         if (err instanceof TypeError) {
-          this.log.error(formatErrorMessage(err.message, 'Unknown TypeError.'));
+          this.log.error(formatErrorMessage(err.stack ?? err.message, 'Unknown TypeError.'));
         } else if (err instanceof Error) {
-          this.log.error(formatErrorMessage(err.message, 'Error requesting all devices'));
+          this.log.error(formatErrorMessage(err.stack ?? err.message, 'Error requesting all devices'));
         } else {
           this.log.error(formatErrorMessage(String(err), 'Unknown error.'));
         }
