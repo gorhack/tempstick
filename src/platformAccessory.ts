@@ -98,6 +98,7 @@ export class TempStickAccessory {
       .onGet(this.handleAmbientCurrentTemperatureGet.bind(this));
     if (probeTemperatureService) {
       probeTemperatureService.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
+        .setProps({ maxValue: 260, minValue: -150, minStep: 0.1 })
         .onGet(this.handleProbeCurrentTemperatureGet.bind(this));
     }
     this.service.getCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity)

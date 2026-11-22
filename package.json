@@ -26,13 +26,11 @@
   },
   "keywords": [
     "homebridge-plugin",
+    "supports-hap",
     "temp stick",
     "tempstick",
     "ideal sciences"
   ],
-  "dependencies": {
-    "homebridge-lib": "^8.1.4"
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.2.0",
